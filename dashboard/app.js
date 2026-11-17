@@ -250,6 +250,32 @@
     );
   }
 
+  // One leader per category: the best-ranked pre-token protocol in each category on the
+  // whole board, so a reader can see at a glance which protocol leads every corner of
+  // the market instead of hunting through 178 rows. Computed from the board data at
+  // render time; no category or protocol name is special-cased.
+  function categoryLeaders() {
+    var leaders = {};
+    DATA.rows.forEach(function (r) {
+      var c = r.category || 'Other';
+      if (!leaders[c] || r.rank < leaders[c].rank) leaders[c] = r;
+    });
+    var list = Object.keys(leaders).map(function (c) { return leaders[c]; });
+    list.sort(function (a, b) { return a.rank - b.rank; });
+    function card(r) {
+      return el('button', { type: 'button', class: 'leader', onclick: function () { openDetail(r.slug); } },
+        el('span', { class: 'label', text: r.category || 'Other' }),
+        el('span', { class: 'value', text: r.name }),
+        el('span', { class: 'why', text: 'Rank ' + r.rank + ' · ' + fmtUsd(r.implied_value_usd) + ' implied · TVL ' + fmtUsd(r.tvl_usd) })
+      );
+    }
+    return el('section', { class: 'leaders', 'aria-label': 'Leading protocol in each category' },
+      el('h2', { text: 'Leaders by category' }),
+      el('p', { class: 'sub', text: 'The best-ranked pre-token protocol in each of the ' + list.length + ' categories on the board. Select one to open its model and farm plan.' }),
+      el('div', { class: 'leader-grid' }, list.map(card))
+    );
+  }
+
   function controls() {
     var categories = Array.from(new Set(DATA.rows.map(function (r) { return r.category || 'Other'; }))).sort();
     var chainCounts = {};
@@ -473,6 +499,7 @@
     shell.appendChild(signals());
     shell.appendChild(controls());
     shell.appendChild(state.tab === 'pre-token' ? boardTable() : liveTable());
+    if (state.tab === 'pre-token') shell.appendChild(categoryLeaders());
     if (state.tab === 'pre-token') shell.appendChild(modelPanel());
     shell.appendChild(foot());
     app.appendChild(shell);
